@@ -21,3 +21,6 @@ const auth = getAuth(app);
 
 // Export the necessary functions
 export { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut };
+
+// You could also optionally default export `auth` to avoid direct destructuring on imports in other files
+export default auth;

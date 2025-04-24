@@ -19,7 +19,7 @@ export default function SignUp() {
     }
     try {
       await signup(email, password); // Using signup function from context
-      navigate('/'); // Redirect to homepage after successful sign-up
+      navigate('/login'); // Redirect to homepage after successful sign-up
     } catch (err) {
       setError(err.message);
     }
