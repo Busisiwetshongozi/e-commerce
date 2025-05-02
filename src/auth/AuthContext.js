@@ -1,85 +1,109 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from '../Firebase'; // Ensure proper Firebase imports
+import {
+  auth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut
+} from '../Firebase';
 
-// Create an Auth context
 const AuthContext = createContext();
 
-// Custom hook to access the auth context
 export function useAuth() {
   return useContext(AuthContext);
 }
 
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null); // State to hold the current user
-  const [loading, setLoading] = useState(true); // Loading state for waiting on auth
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Auth state observer to listen to changes in the authentication state
   useEffect(() => {
-    // Firebase auth state change listener
     const unsubscribe = auth.onAuthStateChanged(user => {
-      console.log('Auth state changed, current user:', user); // Log the user for debugging
-      setCurrentUser(user); // Update the current user state
-      setLoading(false); // Set loading to false once auth state is resolved
+      console.log('Auth state changed, current user:', user);
+      setCurrentUser(user);
+      setLoading(false);
     });
 
-    // Cleanup the listener when the component unmounts
     return unsubscribe;
-  }, []); // Empty dependency array ensures this runs only once after initial render
+  }, []);
 
-  // Sign up function using Firebase auth
-  const signup = (email, password) => {
-    console.log(`Attempting to sign up with email: ${email}`);
-    return createUserWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        console.log('Signup successful:', userCredential.user);
-        return userCredential;
-      })
-      .catch((error) => {
-        console.error('Signup error:', error.message);
-        throw error; // Rethrow the error for handling in the UI
+  // ✅ SIGNUP: Firebase + Java backend
+  const signup = async (email, password, name) => {
+    try {
+      // 1. Create user in Firebase
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 2. Get Firebase ID token
+      const token = await user.getIdToken();
+
+      // 3. Build payload for Java backend
+      const newUser = {
+        firebaseUid: user.uid,
+        email: user.email,
+        name: name,
+        enabled: true // Optional: depends on your User entity
+      };
+
+      // 4. Send to Java backend
+      const response = await fetch("http://localhost:8080/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(newUser)
       });
+
+      if (!response.ok) {
+        throw new Error("Failed to create user in backend");
+      }
+
+      console.log("✅ User created in Firebase and Java backend");
+      return userCredential;
+    } catch (error) {
+      console.error("❌ Signup error:", error);
+      throw error;
+    }
   };
 
-  // Login function using Firebase auth
+  // ✅ LOGIN: Firebase only
   const login = (email, password) => {
-    console.log(`Attempting to log in with email: ${email}`);
+    console.log('Logging in user with email:', email);
     return signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
-        console.log('Login successful:', userCredential.user);
+      .then(userCredential => {
+        console.log('✅ Login successful:', userCredential.user);
         return userCredential;
       })
-      .catch((error) => {
-        console.error('Login error:', error.message);
-        throw error; // Rethrow the error for handling in the UI
+      .catch(error => {
+        console.error('❌ Login error:', error.message);
+        throw error;
       });
   };
 
-  // Logout function using Firebase auth
+  // ✅ LOGOUT
   const logout = () => {
     console.log('Logging out...');
     return signOut(auth)
       .then(() => {
-        console.log('Logout successful');
+        console.log('✅ Logout successful');
       })
-      .catch((error) => {
-        console.error('Logout error:', error.message);
-        throw error; // Rethrow the error for handling in the UI
+      .catch(error => {
+        console.error('❌ Logout error:', error.message);
+        throw error;
       });
   };
 
-  // Providing values to the context
   const value = {
-    currentUser, // Current user information
-    signup, // Sign-up function
-    login, // Login function
-    logout, // Logout function
-    loading, // Loading state to indicate whether we're waiting for auth state
+    currentUser,
+    signup,
+    login,
+    logout,
+    loading,
   };
 
-  // Render the provider with children, but only after loading is complete
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children} {/* Only render children once loading is complete */}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }

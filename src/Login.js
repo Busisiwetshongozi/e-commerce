@@ -3,7 +3,7 @@ import { useAuth } from './auth/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { sendTokenToBackend } from './auth/SendTokenToBackend';
-import { signInWithEmailAndPassword, getAuth, onIdTokenChanged } from 'firebase/auth';
+import { getAuth, onIdTokenChanged } from 'firebase/auth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -35,7 +35,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Validate inputs
     if (!email || !password) {
       setError('Please enter both email and password');
@@ -46,11 +46,11 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // 1. Authenticate with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      
-      // 2. Get fresh token
-      const token = await userCredential.user.getIdToken(true);
+      // 1. Authenticate with Firebase using the email and password entered by the user
+      await login(email, password);
+
+      // 2. Get a fresh token
+      const token = await auth.currentUser.getIdToken(true);
       console.debug('Obtained fresh ID token');
 
       // 3. Verify token with backend
@@ -59,14 +59,7 @@ export default function Login() {
         { email }
       );
 
-      // 4. Update auth context
-      await login({
-        email,
-        token,
-        userData: backendResponse.userData || backendResponse // Handle both response formats
-      });
-
-      // 5. Navigate to destination
+      // 4. Update auth context and navigate to home page
       navigate(location.state?.from || '/home', {
         state: {
           message: 'Login successful!',
@@ -83,7 +76,7 @@ export default function Login() {
       });
 
       let errorMessage = 'Login failed. Please try again.';
-      
+
       switch (err.code) {
         case 'auth/invalid-credential':
           errorMessage = 'Invalid email or password';
@@ -118,28 +111,19 @@ export default function Login() {
           <div className="card shadow">
             <div className="card-body">
               <h2 className="card-title text-center mb-4">Login</h2>
-              
+
               {successMessage && (
                 <div className="alert alert-success">
                   {successMessage}
                 </div>
               )}
-              
+
               {error && (
                 <div className="alert alert-danger">
                   {error}
-                  <div className="mt-2 small">
-                    <button 
-                      className="btn btn-sm btn-outline-secondary"
-                      onClick={() => navigator.clipboard.writeText(error)}
-                      aria-label="Copy error message"
-                    >
-                      Copy Error
-                    </button>
-                  </div>
                 </div>
               )}
-              
+
               <form onSubmit={handleSubmit} noValidate>
                 <div className="mb-3">
                   <label htmlFor="email" className="form-label">Email</label>
@@ -153,10 +137,9 @@ export default function Login() {
                     required
                     autoFocus
                     disabled={isLoading}
-                    autoComplete="username"
                   />
                 </div>
-                
+
                 <div className="mb-3">
                   <label htmlFor="password" className="form-label">Password</label>
                   <input
@@ -167,11 +150,9 @@ export default function Login() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     disabled={isLoading}
-                    autoComplete="current-password"
-                    minLength="6"
                   />
                 </div>
-                
+
                 <button 
                   type="submit" 
                   className="btn btn-primary w-100"
@@ -186,7 +167,7 @@ export default function Login() {
                   ) : 'Login'}
                 </button>
               </form>
-              
+
               <div className="mt-3 text-center">
                 <p className="mb-2">
                   Don't have an account? <Link to="/signup">Sign Up</Link>
