@@ -27,7 +27,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   // ✅ SIGNUP: Firebase + Java backend
-  const signup = async (email, password, name) => {
+  const signup = async (email, password, extraFields) => {
     try {
       // 1. Create user in Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -40,7 +40,9 @@ export function AuthProvider({ children }) {
       const newUser = {
         firebaseUid: user.uid,
         email: user.email,
-        name: name,
+        name: extraFields.name,
+    phone: extraFields.phone,
+    address: extraFields.address,
         enabled: true // Optional: depends on your User entity
       };
 
