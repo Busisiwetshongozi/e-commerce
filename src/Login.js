@@ -10,6 +10,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [loginSuccess, setLoginSuccess] = useState(null); // State to store login success status
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,12 +18,13 @@ export default function Login() {
 
   const successMessage = location.state?.successMessage;
 
-  // Token monitoring effect
+  // 🔍 Token monitoring effect
   useEffect(() => {
     const unsubscribe = onIdTokenChanged(auth, async (user) => {
       if (user) {
         try {
           const token = await user.getIdToken();
+          console.log('🔥 ID Token being sent:', token); // ✅ FIXED HERE
           const { exp } = JSON.parse(atob(token.split('.')[1]));
           console.debug(`Token expires at: ${new Date(exp * 1000)}`);
         } catch (error) {
@@ -36,7 +38,6 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validate inputs
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
@@ -46,28 +47,27 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      // 1. Authenticate with Firebase using the email and password entered by the user
       await login(email, password);
-
-      // 2. Get a fresh token
       const token = await auth.currentUser.getIdToken(true);
       console.debug('Obtained fresh ID token');
 
-      // 3. Verify token with backend
-      const backendResponse = await sendTokenToBackend(
-        "api/protected/user-info",
-        { email }
-      );
+      // Send token to backend to verify login status
+      const backendResponse = await sendTokenToBackend("api/auth/me");
 
-      // 4. Update auth context and navigate to home page
-      navigate(location.state?.from || '/home', {
-        state: {
-          message: 'Login successful!',
-          user: backendResponse.userData || backendResponse
-        },
-        replace: true
-      });
-
+      // Check if backend response is successful
+      if (backendResponse.status === 'success') {
+        setLoginSuccess(true); // Set success status on login success
+        navigate(location.state?.from || '/order', {
+          state: {
+            message: 'Login successful!',
+            user: backendResponse.userData || backendResponse
+          },
+          replace: true
+        });
+      } else {
+        setLoginSuccess(false); // If backend response indicates failure
+        setError('Failed to log in, please try again.');
+      }
     } catch (err) {
       console.error('Login error:', {
         code: err.code,
@@ -118,6 +118,14 @@ export default function Login() {
                 </div>
               )}
 
+              {/* Display success message after login */}
+              {loginSuccess !== null && loginSuccess === true && (
+                <div className="alert alert-success">
+                  Login was successful on the backend!
+                </div>
+              )}
+
+              {/* Display error message if login fails */}
               {error && (
                 <div className="alert alert-danger">
                   {error}

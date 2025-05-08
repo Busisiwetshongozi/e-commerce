@@ -13,13 +13,16 @@ export default function Home() {
       {/* Header Section */}
       <header className="header">
         <div className="logo">
-          <h1>
-            {currentUser ? (
-              `Welcome, ${backendUser?.name}!`
-            ) : (
-              'Welcome to Our Store!'
-            )}
-          </h1>
+        <h1>
+          {currentUser ? (
+            <>
+              Welcome {backendUser?.name}! <br />
+          
+            </>
+          ) : (
+            'Welcome to the Best E-commerce Store'
+          )}
+        </h1>
         </div>
         <nav className="nav">
           {!currentUser ? (

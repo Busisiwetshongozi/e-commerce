@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from '../Firebase';
+import { sendTokenToBackend } from './SendTokenToBackend'; // Make sure this uses GET for /api/auth/me
 
 const AuthContext = createContext();
 
@@ -14,6 +15,7 @@ export function useAuth() {
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [backendUser, setBackendUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -21,32 +23,40 @@ export function AuthProvider({ children }) {
       console.log('Auth state changed, current user:', user);
       setCurrentUser(user);
       setLoading(false);
+      if (user) {
+        getBackendUser(user);
+      }
     });
 
     return unsubscribe;
   }, []);
 
-  // ✅ SIGNUP: Firebase + Java backend
+  const getBackendUser = async (user) => {
+    try {
+      const token = await user.getIdToken();
+      const response = await sendTokenToBackend("api/auth/me"); // ✅ Correct endpoint
+      setBackendUser(response.user); // Expecting { user: { name, email, ... } }
+    } catch (error) {
+      console.error('Failed to fetch backend user:', error);
+      setBackendUser(null);
+    }
+  };
+
   const signup = async (email, password, extraFields) => {
     try {
-      // 1. Create user in Firebase
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // 2. Get Firebase ID token
       const token = await user.getIdToken();
 
-      // 3. Build payload for Java backend
       const newUser = {
         firebaseUid: user.uid,
         email: user.email,
         name: extraFields.name,
-    phone: extraFields.phone,
-    address: extraFields.address,
-        enabled: true // Optional: depends on your User entity
+        phone: extraFields.phone,
+        address: extraFields.address,
+        enabled: true,
       };
 
-      // 4. Send to Java backend
       const response = await fetch("http://localhost:8080/api/auth/register", {
         method: "POST",
         headers: {
@@ -68,7 +78,6 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // ✅ LOGIN: Firebase only
   const login = (email, password) => {
     console.log('Logging in user with email:', email);
     return signInWithEmailAndPassword(auth, email, password)
@@ -82,12 +91,12 @@ export function AuthProvider({ children }) {
       });
   };
 
-  // ✅ LOGOUT
   const logout = () => {
     console.log('Logging out...');
     return signOut(auth)
       .then(() => {
         console.log('✅ Logout successful');
+        setBackendUser(null); // Clear backend user on logout
       })
       .catch(error => {
         console.error('❌ Logout error:', error.message);
@@ -97,6 +106,7 @@ export function AuthProvider({ children }) {
 
   const value = {
     currentUser,
+    backendUser,
     signup,
     login,
     logout,

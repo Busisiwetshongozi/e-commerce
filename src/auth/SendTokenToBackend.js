@@ -1,12 +1,12 @@
 import { getAuth } from "firebase/auth";
 
-const API_BASE_URL = "http://localhost:8080"; // Base URL
+const API_BASE_URL = "http://localhost:8080";
 
 /**
- * Sends Firebase token to your protected backend endpoint
- * @param {string} endpoint - API endpoint path (e.g., "api/protected/user-info")
- * @param {Object} [additionalData] - Optional additional data to send
- * @returns {Promise<Object>} Parsed JSON response from backend
+ * Sends Firebase token to your backend with automatic GET/POST support.
+ * @param {string} endpoint - API endpoint (e.g., "api/auth/me")
+ * @param {Object} [additionalData] - Optional body payload (triggers POST)
+ * @returns {Promise<Object>} Parsed JSON response
  */
 export const sendTokenToBackend = async (endpoint, additionalData = {}) => {
   const auth = getAuth();
@@ -16,52 +16,48 @@ export const sendTokenToBackend = async (endpoint, additionalData = {}) => {
     throw new Error("No authenticated user found");
   }
 
-  // Normalize endpoint path
-  const normalizedEndpoint = endpoint.startsWith("/") 
-    ? endpoint 
-    : `/${endpoint}`;
+  const normalizedEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const token = await user.getIdToken(true);
+  console.debug("🔐 Obtained Firebase ID token");
+
+  const method = Object.keys(additionalData).length > 0 ? "POST" : "GET";
+  const fetchOptions = {
+    method,
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  };
+
+  if (method === "POST") {
+    fetchOptions.headers["Content-Type"] = "application/json";
+    fetchOptions.body = JSON.stringify(additionalData);
+  }
 
   try {
-    // Get fresh ID token
-    const token = await user.getIdToken(true);
-    console.debug("Obtained Firebase ID token");
+    const response = await fetch(`${API_BASE_URL}${normalizedEndpoint}`, fetchOptions);
 
-    const response = await fetch(`${API_BASE_URL}${normalizedEndpoint}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: Object.keys(additionalData).length > 0 
-        ? JSON.stringify(additionalData) 
-        : undefined
-    });
-
-    // Handle response
     if (!response.ok) {
       const errorData = await parseResponse(response);
-      console.error("Backend request failed:", {
+      console.error("❌ Backend request failed:", {
         status: response.status,
         error: errorData
       });
-      throw new Error(
-        errorData.message || `Request failed with status ${response.status}`
-      );
+      throw new Error(errorData.message || `Request failed with status ${response.status}`);
     }
 
     return await parseResponse(response);
   } catch (error) {
-    console.error("Failed to communicate with backend:", error);
+    console.error("❌ Failed to communicate with backend:", error);
     throw error;
   }
 };
 
 /**
- * Helper function to parse response body
+ * Safely parse the backend response
  */
 const parseResponse = async (response) => {
   const contentType = response.headers.get("content-type") || "";
-  
+
   try {
     if (contentType.includes("application/json")) {
       return await response.json();
@@ -69,9 +65,9 @@ const parseResponse = async (response) => {
     const text = await response.text();
     return { message: text };
   } catch (parseError) {
-    console.error("Failed to parse response:", parseError);
-    return { 
-      message: `Failed to parse response (status ${response.status})` 
+    console.error("❌ Failed to parse response:", parseError);
+    return {
+      message: `Failed to parse response (status ${response.status})`
     };
   }
 };
