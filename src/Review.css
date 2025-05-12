@@ -1,0 +1,19 @@
+/* Review.css */
+.star-rating i {
+    cursor: pointer;
+    font-size: 2rem;
+    margin-right: 5px;
+  }
+  
+  .star-rating .fa-star {
+    color: #e0e0e0;
+  }
+  
+  .star-rating .fa-star.text-warning {
+    color: #ffc107; /* Yellow for filled stars */
+  }
+  
+  .star-rating .fa-star.text-muted {
+    color: #6c757d; /* Light gray for unfilled stars */
+  }
+  
