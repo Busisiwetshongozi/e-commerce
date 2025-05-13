@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from './Firebase';
 
@@ -7,7 +7,7 @@ const ProductForm = () => {
     name: '',
     brand: '',
     model: '',
-    category: '',
+    categoryId: '',
     description: '',
     price: 0,
     stockQuantity: 0,
@@ -18,10 +18,26 @@ const ProductForm = () => {
     imageUrls: []
   });
 
+  const [categories, setCategories] = useState([]);
   const [imageFiles, setImageFiles] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('http://localhost:8080/api/categories');
+        if (!res.ok) throw new Error('Failed to fetch categories');
+        const data = await res.json();
+        setCategories(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -93,7 +109,7 @@ const ProductForm = () => {
       name: '',
       brand: '',
       model: '',
-      category: '',
+      categoryId: '',
       description: '',
       price: 0,
       stockQuantity: 0,
@@ -164,16 +180,20 @@ const ProductForm = () => {
         </div>
 
         <div className="mb-3">
-          <label htmlFor="category" className="form-label">Category</label>
-          <input
-            type="text"
-            className="form-control"
-            id="category"
-            name="category"
-            value={product.category}
+          <label htmlFor="categoryId" className="form-label">Category</label>
+          <select
+            className="form-select"
+            id="categoryId"
+            name="categoryId"
+            value={product.categoryId}
             onChange={handleChange}
             required
-          />
+          >
+            <option value="">Select a Category</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
         </div>
 
         <div className="mb-3">

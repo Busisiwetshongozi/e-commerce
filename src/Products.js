@@ -1,32 +1,142 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // 👈 for navigation
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCart } from './CartContext';
+import './Products.css'
+
 
 const Products = () => {
   const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const { addToCart } = useCart();
   const navigate = useNavigate();
+  const searchRef = useRef(null);
 
+  const MIN_CHARS_FOR_SUGGESTIONS = 2;
+
+  // Close suggestions when clicking outside
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch('http://localhost:8080/api/products');
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
-        const data = await response.json();
-        setProducts(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setIsLoading(false);
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
       }
     };
 
-    fetchProducts();
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
+
+  // Fetch categories on mount
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch('http://localhost:8080/api/categories');
+        if (!res.ok) throw new Error('Failed to fetch categories');
+        const data = await res.json();
+        setCategories(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch products by category (initial or when category changes)
+  useEffect(() => {
+    fetchProducts(selectedCategoryId);
+  }, [selectedCategoryId]);
+
+  const fetchProducts = async (categoryId = '') => {
+    setIsLoading(true);
+    try {
+      let url = 'http://localhost:8080/api/products';
+      if (categoryId) {
+        url = `http://localhost:8080/api/products/category/${categoryId}`;
+      }
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      const data = await response.json();
+      setProducts(data);
+      setFilteredProducts(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Generate suggestions from existing products
+  const generateSuggestions = (query) => {
+    if (query.length < MIN_CHARS_FOR_SUGGESTIONS) {
+      setSearchSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    const lowerCaseQuery = query.toLowerCase();
+    
+    const suggestions = products
+      .filter(product => 
+        product.name.toLowerCase().includes(lowerCaseQuery) ||
+        product.brand?.toLowerCase().includes(lowerCaseQuery)
+      )
+      .map(product => product.name)
+      .filter((name, index, self) => self.indexOf(name) === index) // Remove duplicates
+      .slice(0, 5); // Limit to 5 suggestions
+    
+    setSearchSuggestions(suggestions);
+    setShowSuggestions(suggestions.length > 0);
+  };
+
+  // Handle search input changes
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    const timer = setTimeout(() => {
+      generateSuggestions(query);
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  };
+
+  // Handle suggestion selection
+  const handleSuggestionClick = (suggestion) => {
+    setSearchQuery(suggestion);
+    setShowSuggestions(false);
+    
+    const filtered = products.filter(p => 
+      p.name.toLowerCase().includes(suggestion.toLowerCase()) || 
+      p.brand?.toLowerCase().includes(suggestion.toLowerCase())
+    );
+    setFilteredProducts(filtered);
+  };
+
+  // Handle search submission
+  const handleSearchSubmit = () => {
+    setShowSuggestions(false);
+    if (searchQuery.length === 0) {
+      setFilteredProducts(products);
+      return;
+    }
+    
+    const filtered = products.filter(p => 
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      p.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setFilteredProducts(filtered);
+  };
 
   const getConditionColor = (condition) => {
     switch (condition) {
@@ -37,7 +147,6 @@ const Products = () => {
     }
   };
 
-  // Helper function to get average rating of reviews
   const getAverageRating = (reviews) => {
     if (!reviews || reviews.length === 0) return 0;
     const total = reviews.reduce((acc, review) => acc + review.rating, 0);
@@ -55,18 +164,76 @@ const Products = () => {
   }
 
   if (error) {
-    return (
-      <div className="alert alert-danger">
-        Error loading products: {error}
-      </div>
-    );
+    return <div className="alert alert-danger">Error loading products: {error}</div>;
   }
 
   return (
     <div className="container my-5">
       <h2 className="mb-4">All Products</h2>
+
+      {/* Enhanced Search Bar with Dropdown */}
+      <div className="mb-4 position-relative" ref={searchRef}>
+        <label htmlFor="searchInput" className="form-label">Search Products:</label>
+        <div className="input-group">
+          <input
+            type="text"
+            id="searchInput"
+            className="form-control"
+            placeholder="Search by name, brand or description..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onFocus={() => searchQuery.length >= MIN_CHARS_FOR_SUGGESTIONS && setShowSuggestions(true)}
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={handleSearchSubmit}
+          >
+            Search
+          </button>
+        </div>
+
+        {/* Suggestions Dropdown */}
+        {showSuggestions && searchSuggestions.length > 0 && (
+          <div className="suggestions-dropdown">
+            {searchSuggestions.map((suggestion, index) => (
+              <div
+                key={index}
+                className="suggestion-item"
+                onClick={() => handleSuggestionClick(suggestion)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSuggestionClick(suggestion)}
+                tabIndex={0}
+              >
+                {suggestion}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Category Dropdown */}
+      <div className="mb-4">
+        <label htmlFor="categoryFilter" className="form-label">
+          Filter by Category:
+        </label>
+        <select
+          id="categoryFilter"
+          className="form-select"
+          value={selectedCategoryId}
+          onChange={(e) => setSelectedCategoryId(e.target.value)}
+        >
+          <option value="">All Categories</option>
+          {categories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="row row-cols-1 row-cols-md-3 g-4">
-        {products.map(product => (
+        {filteredProducts.map(product => (
           <div key={product.id} className="col">
             <div className="card h-100 shadow-sm">
               {product.imageUrls?.[0] && (
@@ -112,7 +279,6 @@ const Products = () => {
                   )}
                 </ul>
 
-                {/* Display the Average Rating */}
                 <div className="mb-3">
                   <strong>Overall Rating: </strong>
                   <span className="fs-5">{getAverageRating(product.reviews)} stars</span>
@@ -121,17 +287,14 @@ const Products = () => {
                 <p className="card-text text-truncate">{product.description}</p>
               </div>
 
-              {/* Reviews section and link */}
               <div className="card-footer bg-transparent d-flex flex-column gap-2">
-                {/* Link to Review Page */}
                 <button
                   className="btn btn-outline-primary w-100"
-                  onClick={() => navigate(`/reviews/${product.id}`)} // Link to review page
+                  onClick={() => navigate(`/reviews/${product.id}`)}
                 >
                   See Reviews
                 </button>
 
-                {/* Add to Cart */}
                 <button
                   className="btn btn-success w-100"
                   onClick={() => {
@@ -143,10 +306,9 @@ const Products = () => {
                   Add to Cart
                 </button>
 
-                {/* Navigate to Write a Review */}
                 <button
                   className="btn btn-outline-primary w-100"
-                  onClick={() => navigate(`/review/${product.id}`)} // Link to write a review page
+                  onClick={() => navigate(`/review/${product.id}`)}
                 >
                   Write a Review
                 </button>
@@ -160,4 +322,3 @@ const Products = () => {
 };
 
 export default Products;
-
