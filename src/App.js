@@ -11,6 +11,8 @@ import UserProfile from './UserProfile';
 import Navbar from './Navbar';
 import ReviewForm from './Review';
 import ProductReviews from './ProductReviews';
+import ProductDetails from './ProductDetails';
+import Cart from './Cart';  // Import the Cart component
 
 function App() {
   return (
@@ -18,7 +20,8 @@ function App() {
       <CartProvider>
         <Navbar /> {/* 🛒 Add the Navbar here to display globally */}
         <Routes>
-        <Route path="/reviews/:productId" element={<ProductReviews />} />
+          <Route path="/product/:id" element={<ProductDetails />} />
+          <Route path="/reviews/:productId" element={<ProductReviews />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<SignUp />} /> {/* Optional homepage */}
@@ -28,7 +31,7 @@ function App() {
           <Route path="/product" element={<ProductForm />} />
           <Route path="/getOrder" element={<GetOrder />} />
           <Route path="/products" element={<Products />} />
-          {/* Updated to handle dynamic productId */}
+          <Route path="/cart" element={<Cart />} /> {/* Use Cart component here */}
           <Route path="/review/:productId" element={<ReviewForm />} />
         </Routes>
       </CartProvider>

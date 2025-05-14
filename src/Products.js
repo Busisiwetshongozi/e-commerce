@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from './CartContext';
-import './Products.css'
-
+import './Products.css';
 
 const Products = () => {
   const [products, setProducts] = useState([]);
@@ -20,21 +19,18 @@ const Products = () => {
 
   const MIN_CHARS_FOR_SUGGESTIONS = 2;
 
-  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
         setShowSuggestions(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  // Fetch categories on mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -46,11 +42,9 @@ const Products = () => {
         console.error(err);
       }
     };
-
     fetchCategories();
   }, []);
 
-  // Fetch products by category (initial or when category changes)
   useEffect(() => {
     fetchProducts(selectedCategoryId);
   }, [selectedCategoryId]);
@@ -75,7 +69,6 @@ const Products = () => {
     }
   };
 
-  // Generate suggestions from existing products
   const generateSuggestions = (query) => {
     if (query.length < MIN_CHARS_FOR_SUGGESTIONS) {
       setSearchSuggestions([]);
@@ -84,54 +77,50 @@ const Products = () => {
     }
 
     const lowerCaseQuery = query.toLowerCase();
-    
     const suggestions = products
-      .filter(product => 
+      .filter(product =>
         product.name.toLowerCase().includes(lowerCaseQuery) ||
         product.brand?.toLowerCase().includes(lowerCaseQuery)
       )
       .map(product => product.name)
-      .filter((name, index, self) => self.indexOf(name) === index) // Remove duplicates
-      .slice(0, 5); // Limit to 5 suggestions
-    
+      .filter((name, index, self) => self.indexOf(name) === index)
+      .slice(0, 5);
+
     setSearchSuggestions(suggestions);
     setShowSuggestions(suggestions.length > 0);
   };
 
-  // Handle search input changes
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    
+
     const timer = setTimeout(() => {
       generateSuggestions(query);
     }, 200);
-    
+
     return () => clearTimeout(timer);
   };
 
-  // Handle suggestion selection
   const handleSuggestionClick = (suggestion) => {
     setSearchQuery(suggestion);
     setShowSuggestions(false);
-    
-    const filtered = products.filter(p => 
-      p.name.toLowerCase().includes(suggestion.toLowerCase()) || 
+
+    const filtered = products.filter(p =>
+      p.name.toLowerCase().includes(suggestion.toLowerCase()) ||
       p.brand?.toLowerCase().includes(suggestion.toLowerCase())
     );
     setFilteredProducts(filtered);
   };
 
-  // Handle search submission
   const handleSearchSubmit = () => {
     setShowSuggestions(false);
     if (searchQuery.length === 0) {
       setFilteredProducts(products);
       return;
     }
-    
-    const filtered = products.filter(p => 
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+
+    const filtered = products.filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -171,7 +160,6 @@ const Products = () => {
     <div className="container my-5">
       <h2 className="mb-4">All Products</h2>
 
-      {/* Enhanced Search Bar with Dropdown */}
       <div className="mb-4 position-relative" ref={searchRef}>
         <label htmlFor="searchInput" className="form-label">Search Products:</label>
         <div className="input-group">
@@ -183,8 +171,6 @@ const Products = () => {
             value={searchQuery}
             onChange={handleSearchChange}
             onFocus={() => searchQuery.length >= MIN_CHARS_FOR_SUGGESTIONS && setShowSuggestions(true)}
-            aria-autocomplete="list"
-            aria-expanded={showSuggestions}
           />
           <button
             className="btn btn-primary"
@@ -193,8 +179,6 @@ const Products = () => {
             Search
           </button>
         </div>
-
-        {/* Suggestions Dropdown */}
         {showSuggestions && searchSuggestions.length > 0 && (
           <div className="suggestions-dropdown">
             {searchSuggestions.map((suggestion, index) => (
@@ -212,11 +196,8 @@ const Products = () => {
         )}
       </div>
 
-      {/* Category Dropdown */}
       <div className="mb-4">
-        <label htmlFor="categoryFilter" className="form-label">
-          Filter by Category:
-        </label>
+        <label htmlFor="categoryFilter" className="form-label">Filter by Category:</label>
         <select
           id="categoryFilter"
           className="form-select"
@@ -225,9 +206,7 @@ const Products = () => {
         >
           <option value="">All Categories</option>
           {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
+            <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
       </div>
@@ -235,7 +214,11 @@ const Products = () => {
       <div className="row row-cols-1 row-cols-md-3 g-4">
         {filteredProducts.map(product => (
           <div key={product.id} className="col">
-            <div className="card h-100 shadow-sm">
+            <div
+              className="card h-100 shadow-sm"
+              onClick={() => navigate(`/product/${product.id}`)}
+              style={{ cursor: 'pointer' }}
+            >
               {product.imageUrls?.[0] && (
                 <img
                   src={product.imageUrls[0]}
@@ -244,24 +227,20 @@ const Products = () => {
                   style={{ height: '200px', objectFit: 'cover' }}
                 />
               )}
-
               <div className="card-body">
                 <span className={`badge bg-${getConditionColor(product.condition)} mb-2`}>
                   {product.condition.replace('_', ' ')}
                 </span>
-
                 <h5 className="card-title">{product.name}</h5>
                 <h6 className="card-subtitle mb-2 text-muted">
                   {product.brand} {product.model}
                 </h6>
-
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <span className="fs-4">${product.price.toFixed(2)}</span>
                   <span className={`badge ${product.stockQuantity > 0 ? 'bg-success' : 'bg-danger'}`}>
                     {product.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}
                   </span>
                 </div>
-
                 <ul className="list-group list-group-flush mb-3">
                   <li className="list-group-item d-flex justify-content-between">
                     <span>Storage:</span>
@@ -278,39 +257,23 @@ const Products = () => {
                     </li>
                   )}
                 </ul>
-
                 <div className="mb-3">
                   <strong>Overall Rating: </strong>
                   <span className="fs-5">{getAverageRating(product.reviews)} stars</span>
                 </div>
-
                 <p className="card-text text-truncate">{product.description}</p>
               </div>
-
               <div className="card-footer bg-transparent d-flex flex-column gap-2">
                 <button
-                  className="btn btn-outline-primary w-100"
-                  onClick={() => navigate(`/reviews/${product.id}`)}
-                >
-                  See Reviews
-                </button>
-
-                <button
                   className="btn btn-success w-100"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     addToCart(product);
                     alert(`${product.name} added to cart!`);
                   }}
                   disabled={product.stockQuantity === 0}
                 >
                   Add to Cart
-                </button>
-
-                <button
-                  className="btn btn-outline-primary w-100"
-                  onClick={() => navigate(`/review/${product.id}`)}
-                >
-                  Write a Review
                 </button>
               </div>
             </div>
