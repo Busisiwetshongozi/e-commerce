@@ -13,6 +13,9 @@ import ReviewForm from './Review';
 import ProductReviews from './ProductReviews';
 import ProductDetails from './ProductDetails';
 import Cart from './Cart';  // Import the Cart component
+import PayButton from './Payment';
+import ForgotPassword from './ForgotPassword';
+
 
 function App() {
   return (
@@ -33,6 +36,8 @@ function App() {
           <Route path="/products" element={<Products />} />
           <Route path="/cart" element={<Cart />} /> {/* Use Cart component here */}
           <Route path="/review/:productId" element={<ReviewForm />} />
+          <Route path="/pay" element={<PayButton />} />
+          <Route path="/password" element={<ForgotPassword />} />
         </Routes>
       </CartProvider>
     </div>

@@ -180,7 +180,7 @@ export default function Login() {
                 <p className="mb-2">
                   Don't have an account? <Link to="/signup">Sign Up</Link>
                 </p>
-                <Link to="/forgot-password">Forgot Password?</Link>
+                <Link to="/password">Forgot Password?</Link>
               </div>
             </div>
           </div>
