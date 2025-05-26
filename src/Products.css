@@ -30,3 +30,66 @@
   .input-group {
     position: relative;
   }
+  /* Price Display Styles */
+.product-pricing {
+  margin: 15px 0;
+}
+
+.price-display {
+  background-color: #f8f9fa;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.discount-badge {
+  margin-bottom: 5px;
+}
+
+.discount-badge .badge {
+  font-size: 0.9rem;
+  padding: 5px 10px;
+}
+
+.price-comparison {
+  display: flex;
+  justify-content: space-between;
+  margin: 5px 0;
+}
+
+.original-price {
+  text-decoration: line-through;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.discounted-price {
+  color: #28a745;
+  font-weight: bold;
+  font-size: 1.1rem;
+}
+
+.you-save {
+  color: #dc3545;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.regular-price {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #343a40;
+}
+
+/* Discount Controls */
+.discount-controls {
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+}
+
+.discount-controls .input-group {
+  margin-top: 5px;
+}
+
+.discount-controls .btn {
+  padding: 0.375rem 0.75rem;
+}

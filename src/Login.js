@@ -57,7 +57,7 @@ export default function Login() {
       // Check if backend response is successful
       if (backendResponse.status === 'success') {
         setLoginSuccess(true); // Set success status on login success
-        navigate(location.state?.from || '/order', {
+        navigate(location.state?.from || '/home', {
           state: {
             message: 'Login successful!',
             user: backendResponse.userData || backendResponse

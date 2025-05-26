@@ -8,7 +8,7 @@ function PayButton() {
   const auth = getAuth();
   const { cartItems, getCartTotal, validateCart } = useCart();
 
-  const initiatePayment = async (paymentMethod) => {
+  const initiatePayment = async (paymentMethod, newWindow) => {
     try {
       setLoading(true);
       setError(null);
@@ -64,39 +64,44 @@ function PayButton() {
 
       const paymentData = await paymentRes.json();
 
-      if (paymentData.paymentUrl && paymentData.paymentParameters) {
-        // Open new window with auto-submitting form
-        const newWindow = window.open('', '_blank');
-        if (!newWindow) throw new Error('Popup blocked. Please allow popups for this site.');
+      if (!newWindow) throw new Error('Popup blocked. Please allow popups for this site.');
 
-        const form = newWindow.document.createElement('form');
-        form.method = 'POST';
-        form.action = paymentData.paymentUrl;
+      // Build form and redirect
+      const form = newWindow.document.createElement('form');
+      form.method = 'POST';
+      form.action = paymentData.paymentUrl;
 
-        for (const [key, value] of Object.entries(paymentData.paymentParameters)) {
-          const input = newWindow.document.createElement('input');
-          input.type = 'hidden';
-          input.name = key;
-          input.value = decodeURIComponent(value);
-          form.appendChild(input);
-        }
-
-        newWindow.document.body.appendChild(form);
-        newWindow.document.write('<html><body>');
-        newWindow.document.write('<p>Redirecting to payment...</p>');
-        newWindow.document.write(form.outerHTML);
-        newWindow.document.write('<script>document.forms[0].submit();</script>');
-        newWindow.document.write('</body></html>');
-        newWindow.document.close();
-      } else {
-        throw new Error('Unexpected payment response format');
+      for (const [key, value] of Object.entries(paymentData.paymentParameters)) {
+        const input = newWindow.document.createElement('input');
+        input.type = 'hidden';
+        input.name = key;
+        input.value = decodeURIComponent(value);
+        form.appendChild(input);
       }
+
+      newWindow.document.write('<html><body>');
+      newWindow.document.body.appendChild(form);
+      newWindow.document.write('<p>Redirecting to payment...</p>');
+      newWindow.document.write(form.outerHTML);
+      newWindow.document.write('<script>document.forms[0].submit();</script>');
+      newWindow.document.write('</body></html>');
+      newWindow.document.close();
 
     } catch (error) {
       console.error('Payment initiation failed:', error);
       setError(error.message);
+      if (newWindow && !newWindow.closed) newWindow.close(); // Close unused window
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePaymentClick = (method) => {
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+      initiatePayment(method, newWindow);
+    } else {
+      setError('Popup blocked. Please allow popups for this site.');
     }
   };
 
@@ -134,7 +139,7 @@ function PayButton() {
           <div
             className={`card shadow-sm ${loading || cartItems.length === 0 ? 'opacity-50' : ''}`}
             style={{ cursor: loading || cartItems.length === 0 ? 'not-allowed' : 'pointer' }}
-            onClick={!loading && cartItems.length > 0 ? () => initiatePayment('credit_card') : undefined}
+            onClick={!loading && cartItems.length > 0 ? () => handlePaymentClick('credit_card') : undefined}
           >
             <img
               src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Mastercard_logo.svg/1200px-Mastercard_logo.svg.png"
@@ -154,7 +159,7 @@ function PayButton() {
           <div
             className={`card shadow-sm ${loading || cartItems.length === 0 ? 'opacity-50' : ''}`}
             style={{ cursor: loading || cartItems.length === 0 ? 'not-allowed' : 'pointer' }}
-            onClick={!loading && cartItems.length > 0 ? () => initiatePayment('ewallet') : undefined}
+            onClick={!loading && cartItems.length > 0 ? () => handlePaymentClick('ewallet') : undefined}
           >
             <img
               src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/Payfast_logo.svg/1200px-Payfast_logo.svg.png"

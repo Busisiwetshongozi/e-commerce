@@ -13,10 +13,11 @@ const Products = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [discountInputs, setDiscountInputs] = useState({});
+
   const { addToCart } = useCart();
   const navigate = useNavigate();
   const searchRef = useRef(null);
-
   const MIN_CHARS_FOR_SUGGESTIONS = 2;
 
   useEffect(() => {
@@ -69,77 +70,67 @@ const Products = () => {
     }
   };
 
-  const generateSuggestions = (query) => {
-    if (query.length < MIN_CHARS_FOR_SUGGESTIONS) {
-      setSearchSuggestions([]);
-      setShowSuggestions(false);
-      return;
+  const handleInputChange = (productId, value) => {
+    setDiscountInputs((prev) => ({
+      ...prev,
+      [productId]: value,
+    }));
+  };
+
+  const handleApplyDiscount = async (productId, discountValue) => {
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/products/${productId}/discount?percent=${discountValue}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to update discount');
+      }
+
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.id === productId
+            ? { ...product, discountPercentage: Number(discountValue) }
+            : product
+        )
+      );
+
+      setFilteredProducts((prev) =>
+        prev.map((product) =>
+          product.id === productId
+            ? { ...product, discountPercentage: Number(discountValue) }
+            : product
+        )
+      );
+    } catch (err) {
+      alert(`Error updating discount: ${err.message}`);
     }
-
-    const lowerCaseQuery = query.toLowerCase();
-    const suggestions = products
-      .filter(product =>
-        product.name.toLowerCase().includes(lowerCaseQuery) ||
-        product.brand?.toLowerCase().includes(lowerCaseQuery)
-      )
-      .map(product => product.name)
-      .filter((name, index, self) => self.indexOf(name) === index)
-      .slice(0, 5);
-
-    setSearchSuggestions(suggestions);
-    setShowSuggestions(suggestions.length > 0);
   };
 
-  const handleSearchChange = (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-
-    const timer = setTimeout(() => {
-      generateSuggestions(query);
-    }, 200);
-
-    return () => clearTimeout(timer);
-  };
-
-  const handleSuggestionClick = (suggestion) => {
-    setSearchQuery(suggestion);
-    setShowSuggestions(false);
-
-    const filtered = products.filter(p =>
-      p.name.toLowerCase().includes(suggestion.toLowerCase()) ||
-      p.brand?.toLowerCase().includes(suggestion.toLowerCase())
+  const DiscountPriceDisplay = ({ price, discountPercentage }) => {
+    const discountedPrice = price * (1 - discountPercentage / 100);
+    return (
+      <div className="price-display">
+        <div className="discount-badge">
+          <span className="badge bg-danger">{discountPercentage}% OFF</span>
+        </div>
+        <div className="price-comparison">
+          <span className="original-price">Was: R{price.toFixed(2)}</span>
+          <span className="discounted-price">Now: R{discountedPrice.toFixed(2)}</span>
+        </div>
+        <div className="you-save">You save: R{(price - discountedPrice).toFixed(2)}</div>
+      </div>
     );
-    setFilteredProducts(filtered);
   };
 
-  const handleSearchSubmit = () => {
-    setShowSuggestions(false);
-    if (searchQuery.length === 0) {
-      setFilteredProducts(products);
-      return;
-    }
-
-    const filtered = products.filter(p =>
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.brand?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredProducts(filtered);
-  };
-
-  const getConditionColor = (condition) => {
-    switch (condition) {
-      case 'NEW': return 'success';
-      case 'REFURBISHED': return 'warning';
-      case 'USED_GOOD': return 'secondary';
-      default: return 'primary';
-    }
-  };
-
-  const getAverageRating = (reviews) => {
-    if (!reviews || reviews.length === 0) return 0;
-    const total = reviews.reduce((acc, review) => acc + review.rating, 0);
-    return (total / reviews.length).toFixed(1);
+  const RegularPriceDisplay = ({ price }) => {
+    return <div className="regular-price">R{price.toFixed(2)}</div>;
   };
 
   if (isLoading) {
@@ -160,64 +151,12 @@ const Products = () => {
     <div className="container my-5">
       <h2 className="mb-4">All Products</h2>
 
-      <div className="mb-4 position-relative" ref={searchRef}>
-        <label htmlFor="searchInput" className="form-label">Search Products:</label>
-        <div className="input-group">
-          <input
-            type="text"
-            id="searchInput"
-            className="form-control"
-            placeholder="Search by name, brand or description..."
-            value={searchQuery}
-            onChange={handleSearchChange}
-            onFocus={() => searchQuery.length >= MIN_CHARS_FOR_SUGGESTIONS && setShowSuggestions(true)}
-          />
-          <button
-            className="btn btn-primary"
-            onClick={handleSearchSubmit}
-          >
-            Search
-          </button>
-        </div>
-        {showSuggestions && searchSuggestions.length > 0 && (
-          <div className="suggestions-dropdown">
-            {searchSuggestions.map((suggestion, index) => (
-              <div
-                key={index}
-                className="suggestion-item"
-                onClick={() => handleSuggestionClick(suggestion)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSuggestionClick(suggestion)}
-                tabIndex={0}
-              >
-                {suggestion}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="mb-4">
-        <label htmlFor="categoryFilter" className="form-label">Filter by Category:</label>
-        <select
-          id="categoryFilter"
-          className="form-select"
-          value={selectedCategoryId}
-          onChange={(e) => setSelectedCategoryId(e.target.value)}
-        >
-          <option value="">All Categories</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>{cat.name}</option>
-          ))}
-        </select>
-      </div>
-
       <div className="row row-cols-1 row-cols-md-3 g-4">
-        {filteredProducts.map(product => (
+        {filteredProducts.map((product) => (
           <div key={product.id} className="col">
             <div
               className="card h-100 shadow-sm"
               onClick={() => navigate(`/product/${product.id}`)}
-              style={{ cursor: 'pointer' }}
             >
               {product.imageUrls?.[0] && (
                 <img
@@ -228,41 +167,76 @@ const Products = () => {
                 />
               )}
               <div className="card-body">
-                <span className={`badge bg-${getConditionColor(product.condition)} mb-2`}>
+                <span
+                  className={`badge mb-2 ${
+                    product.condition === 'new'
+                      ? 'bg-success'
+                      : product.condition === 'used'
+                      ? 'bg-warning text-dark'
+                      : product.condition === 'damaged'
+                      ? 'bg-danger'
+                      : 'bg-secondary'
+                  }`}
+                >
                   {product.condition.replace('_', ' ')}
                 </span>
+
                 <h5 className="card-title">{product.name}</h5>
                 <h6 className="card-subtitle mb-2 text-muted">
                   {product.brand} {product.model}
                 </h6>
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="fs-4">${product.price.toFixed(2)}</span>
-                  <span className={`badge ${product.stockQuantity > 0 ? 'bg-success' : 'bg-danger'}`}>
-                    {product.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}
-                  </span>
-                </div>
-                <ul className="list-group list-group-flush mb-3">
-                  <li className="list-group-item d-flex justify-content-between">
-                    <span>Storage:</span>
-                    <strong>{product.storage}</strong>
-                  </li>
-                  <li className="list-group-item d-flex justify-content-between">
-                    <span>Color:</span>
-                    <strong>{product.color}</strong>
-                  </li>
-                  {product.batteryHealth > 0 && (
-                    <li className="list-group-item d-flex justify-content-between">
-                      <span>Battery:</span>
-                      <strong>{product.batteryHealth}%</strong>
-                    </li>
+
+                <div className="product-pricing">
+                  {product.discountPercentage > 0 ? (
+                    <DiscountPriceDisplay
+                      price={product.price}
+                      discountPercentage={product.discountPercentage}
+                    />
+                  ) : (
+                    <RegularPriceDisplay price={product.price} />
                   )}
-                </ul>
-                <div className="mb-3">
-                  <strong>Overall Rating: </strong>
-                  <span className="fs-5">{getAverageRating(product.reviews)} stars</span>
                 </div>
-                <p className="card-text text-truncate">{product.description}</p>
+
+                <div className="discount-controls mt-3">
+                  <div className="input-group">
+                    <input
+                      type="number"
+                      className="form-control"
+                      placeholder="Discount %"
+                      min="1"
+                      max="90"
+                      value={discountInputs[product.id] ?? product.discountPercentage ?? ''}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleInputChange(product.id, e.target.value)}
+                    />
+                    <button
+                      className={`btn ${
+                        product.discountPercentage > 0 ? 'btn-outline-danger' : 'btn-outline-primary'
+                      }`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const value = discountInputs[product.id] || 0;
+                        handleApplyDiscount(product.id, value);
+                      }}
+                    >
+                      {product.discountPercentage > 0 ? 'Update' : 'Apply'}
+                    </button>
+                    {product.discountPercentage > 0 && (
+                      <button
+                        className="btn btn-outline-secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApplyDiscount(product.id, 0);
+                          handleInputChange(product.id, '');
+                        }}
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
+
               <div className="card-footer bg-transparent d-flex flex-column gap-2">
                 <button
                   className="btn btn-success w-100"
