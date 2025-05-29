@@ -6,6 +6,26 @@ import './Home.css';
 
 const MIN_CHARS_FOR_SUGGESTIONS = 2;
 
+const DiscountPriceDisplay = ({ price, discountPercentage }) => {
+  const discountedPrice = price * (1 - discountPercentage / 100);
+  return (
+    <div className="price-display">
+      <div className="discount-badge">
+        <span className="badge bg-danger">{discountPercentage}% OFF</span>
+      </div>
+      <div className="price-comparison">
+        <span className="original-price">Was: R{price.toFixed(2)}</span>
+        <span className="discounted-price">Now: R{discountedPrice.toFixed(2)}</span>
+      </div>
+      <div className="you-save">You save: R{(price - discountedPrice).toFixed(2)}</div>
+    </div>
+  );
+};
+
+const RegularPriceDisplay = ({ price }) => {
+  return <div className="regular-price">R{price.toFixed(2)}</div>;
+};
+
 export default function Home() {
   const { currentUser, backendUser, logout } = useAuth();
   const { addToCart } = useCart();
@@ -249,12 +269,18 @@ export default function Home() {
                 <h6 className="card-subtitle mb-2 text-muted">
                   {product.brand} {product.model}
                 </h6>
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                  <span className="fs-4">${product.price.toFixed(2)}</span>
-                  <span className={`badge ${product.stockQuantity > 0 ? 'bg-success' : 'bg-danger'}`}>
-                    {product.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}
-                  </span>
+
+                <div className="product-pricing">
+                  {product.discountPercentage > 0 ? (
+                    <DiscountPriceDisplay
+                      price={product.price}
+                      discountPercentage={product.discountPercentage}
+                    />
+                  ) : (
+                    <RegularPriceDisplay price={product.price} />
+                  )}
                 </div>
+
                 <p className="card-text text-truncate">{product.description}</p>
               </div>
               <div className="card-footer bg-transparent d-flex flex-column gap-2">

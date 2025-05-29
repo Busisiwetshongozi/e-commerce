@@ -8,6 +8,14 @@ function PayButton() {
   const auth = getAuth();
   const { cartItems, getCartTotal, validateCart } = useCart();
 
+  // Calculate discounted price for display
+  const calculateDiscountedPrice = (item) => {
+    if (item.discountPercentage > 0) {
+      return item.price * (1 - item.discountPercentage / 100);
+    }
+    return item.price;
+  };
+
   const initiatePayment = async (paymentMethod, newWindow) => {
     try {
       setLoading(true);
@@ -24,7 +32,7 @@ function PayButton() {
       const token = await user.getIdToken();
       const API_URL = 'http://localhost:8080';
 
-      // Create order
+      // Create order with properly calculated prices
       const createOrderRes = await fetch(`${API_URL}/api/orders/create`, {
         method: 'POST',
         headers: {
@@ -35,7 +43,9 @@ function PayButton() {
           items: cartItems.map(item => ({
             productId: item.id,
             quantity: item.quantity,
-            price: item.price,
+            price: calculateDiscountedPrice(item), // Use calculated discounted price
+            originalPrice: item.price, // Original price before discount
+            discountPercentage: item.discountPercentage || 0
           })),
           paymentMethod,
         }),
@@ -48,7 +58,7 @@ function PayButton() {
 
       const createdOrder = await createOrderRes.json();
 
-      // Initiate payment
+      // Initiate payment with the correct amount
       const paymentRes = await fetch(`${API_URL}/api/payfast/${createdOrder.id}/initiate`, {
         method: 'POST',
         headers: {
@@ -66,7 +76,7 @@ function PayButton() {
 
       if (!newWindow) throw new Error('Popup blocked. Please allow popups for this site.');
 
-      // Build form and redirect
+      // Payment form submission remains the same
       const form = newWindow.document.createElement('form');
       form.method = 'POST';
       form.action = paymentData.paymentUrl;
@@ -90,7 +100,7 @@ function PayButton() {
     } catch (error) {
       console.error('Payment initiation failed:', error);
       setError(error.message);
-      if (newWindow && !newWindow.closed) newWindow.close(); // Close unused window
+      if (newWindow && !newWindow.closed) newWindow.close();
     } finally {
       setLoading(false);
     }
@@ -118,16 +128,33 @@ function PayButton() {
       <div className="cart-summary mb-4 p-3 border rounded">
         <h4>Order Summary</h4>
         <ul className="list-unstyled">
-          {cartItems.map(item => (
-            <li key={item.id} className="d-flex justify-content-between">
-              <span>{item.name} x {item.quantity}</span>
-              <span>${(item.price * item.quantity).toFixed(2)}</span>
-            </li>
-          ))}
+          {cartItems.map(item => {
+            const discountedPrice = calculateDiscountedPrice(item);
+            const showDiscount = item.discountPercentage > 0;
+            
+            return (
+              <li key={item.id} className="d-flex justify-content-between mb-2">
+                <div>
+                  <span>{item.name} x {item.quantity}</span>
+                  {showDiscount && (
+                    <span className="badge bg-danger ms-2">{item.discountPercentage}% OFF</span>
+                  )}
+                </div>
+                <div className="text-end">
+                  {showDiscount && (
+                    <div className="text-decoration-line-through text-muted small">
+                      R{(item.price * item.quantity).toFixed(2)}
+                    </div>
+                  )}
+                  <div>R{(discountedPrice * item.quantity).toFixed(2)}</div>
+                </div>
+              </li>
+            );
+          })}
         </ul>
-        <div className="total fw-bold d-flex justify-content-between">
+        <div className="total fw-bold d-flex justify-content-between mt-3 pt-2 border-top">
           <span>Total:</span>
-          <span>${getCartTotal().toFixed(2)}</span>
+          <span>R{getCartTotal().toFixed(2)}</span>
         </div>
       </div>
 

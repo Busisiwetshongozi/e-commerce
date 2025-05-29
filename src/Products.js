@@ -152,107 +152,122 @@ const Products = () => {
       <h2 className="mb-4">All Products</h2>
 
       <div className="row row-cols-1 row-cols-md-3 g-4">
-        {filteredProducts.map((product) => (
-          <div key={product.id} className="col">
-            <div
-              className="card h-100 shadow-sm"
-              onClick={() => navigate(`/product/${product.id}`)}
-            >
-              {product.imageUrls?.[0] && (
-                <img
-                  src={product.imageUrls[0]}
-                  className="card-img-top"
-                  alt={product.name}
-                  style={{ height: '200px', objectFit: 'cover' }}
-                />
-              )}
-              <div className="card-body">
-                <span
-                  className={`badge mb-2 ${
-                    product.condition === 'new'
-                      ? 'bg-success'
-                      : product.condition === 'used'
-                      ? 'bg-warning text-dark'
-                      : product.condition === 'damaged'
-                      ? 'bg-danger'
-                      : 'bg-secondary'
-                  }`}
-                >
-                  {product.condition.replace('_', ' ')}
-                </span>
+        {filteredProducts.map((product) => {
+          const discountedPrice =
+            product.discountPercentage > 0
+              ? product.price * (1 - product.discountPercentage / 100)
+              : product.price;
 
-                <h5 className="card-title">{product.name}</h5>
-                <h6 className="card-subtitle mb-2 text-muted">
-                  {product.brand} {product.model}
-                </h6>
+          return (
+            <div key={product.id} className="col">
+              <div
+                className="card h-100 shadow-sm"
+                onClick={() => navigate(`/product/${product.id}`)}
+              >
+                {product.imageUrls?.[0] && (
+                  <img
+                    src={product.imageUrls[0]}
+                    className="card-img-top"
+                    alt={product.name}
+                    style={{ height: '200px', objectFit: 'cover' }}
+                  />
+                )}
+                <div className="card-body">
+                  <span
+                    className={`badge mb-2 ${
+                      product.condition === 'new'
+                        ? 'bg-success'
+                        : product.condition === 'used'
+                        ? 'bg-warning text-dark'
+                        : product.condition === 'damaged'
+                        ? 'bg-danger'
+                        : 'bg-secondary'
+                    }`}
+                  >
+                    {product.condition.replace('_', ' ')}
+                  </span>
 
-                <div className="product-pricing">
-                  {product.discountPercentage > 0 ? (
-                    <DiscountPriceDisplay
-                      price={product.price}
-                      discountPercentage={product.discountPercentage}
-                    />
-                  ) : (
-                    <RegularPriceDisplay price={product.price} />
-                  )}
-                </div>
+                  <h5 className="card-title">{product.name}</h5>
+                  <h6 className="card-subtitle mb-2 text-muted">
+                    {product.brand} {product.model}
+                  </h6>
 
-                <div className="discount-controls mt-3">
-                  <div className="input-group">
-                    <input
-                      type="number"
-                      className="form-control"
-                      placeholder="Discount %"
-                      min="1"
-                      max="90"
-                      value={discountInputs[product.id] ?? product.discountPercentage ?? ''}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={(e) => handleInputChange(product.id, e.target.value)}
-                    />
-                    <button
-                      className={`btn ${
-                        product.discountPercentage > 0 ? 'btn-outline-danger' : 'btn-outline-primary'
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const value = discountInputs[product.id] || 0;
-                        handleApplyDiscount(product.id, value);
-                      }}
-                    >
-                      {product.discountPercentage > 0 ? 'Update' : 'Apply'}
-                    </button>
-                    {product.discountPercentage > 0 && (
-                      <button
-                        className="btn btn-outline-secondary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleApplyDiscount(product.id, 0);
-                          handleInputChange(product.id, '');
-                        }}
-                      >
-                        Remove
-                      </button>
+                  <div className="product-pricing">
+                    {product.discountPercentage > 0 ? (
+                      <DiscountPriceDisplay
+                        price={product.price}
+                        discountPercentage={product.discountPercentage}
+                      />
+                    ) : (
+                      <RegularPriceDisplay price={product.price} />
                     )}
                   </div>
+
+                  <div className="discount-controls mt-3">
+                    <div className="input-group">
+                      <input
+                        type="number"
+                        className="form-control"
+                        placeholder="Discount %"
+                        min="1"
+                        max="90"
+                        value={discountInputs[product.id] ?? product.discountPercentage ?? ''}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleInputChange(product.id, e.target.value)}
+                      />
+                      <button
+                        className={`btn ${
+                          product.discountPercentage > 0
+                            ? 'btn-outline-danger'
+                            : 'btn-outline-primary'
+                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const value = discountInputs[product.id] || 0;
+                          handleApplyDiscount(product.id, value);
+                        }}
+                      >
+                        {product.discountPercentage > 0 ? 'Update' : 'Apply'}
+                      </button>
+                      {product.discountPercentage > 0 && (
+                        <button
+                          className="btn btn-outline-secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleApplyDiscount(product.id, 0);
+                            handleInputChange(product.id, '');
+                          }}
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card-footer bg-transparent d-flex flex-column gap-2">
+                  <button
+                    className="btn btn-success w-100"
+                    onClick={(e) => {
+                      e.stopPropagation();
+
+                      addToCart({
+                        ...product,
+                        originalPrice: product.price,
+                        price: discountedPrice,
+                      });
+
+                      alert(`${product.name} added to cart!`);
+                    }}
+                    disabled={product.stockQuantity === 0}
+                  >
+                    Add to Cart
+                  </button>
                 </div>
               </div>
-
-              <div className="card-footer bg-transparent d-flex flex-column gap-2">
-                <button
-                  className="btn btn-success w-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addToCart(product);
-                    alert(`${product.name} added to cart!`);
-                  }}
-                  disabled={product.stockQuantity === 0}
-                >
-                  Add to Cart
-                </button>
-              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

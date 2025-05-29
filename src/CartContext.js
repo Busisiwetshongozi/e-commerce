@@ -36,10 +36,33 @@ export const CartProvider = ({ children }) => {
     setCartItems([]);
   };
 
+  // Calculate discounted price for an item
+  const calculateDiscountedPrice = (item) => {
+    if (item.discountPercentage > 0) {
+      return item.price * (1 - item.discountPercentage / 100);
+    }
+    return item.price;
+  };
+
+  // Calculate cart total using discounted prices
   const getCartTotal = () => {
     return cartItems.reduce(
-      (total, item) => total + (item.price * item.quantity),
+      (total, item) => total + (calculateDiscountedPrice(item) * item.quantity),
       0
+    );
+  };
+
+  // Get both original and discounted totals if needed
+  const getCartTotals = () => {
+    return cartItems.reduce(
+      (totals, item) => {
+        const discountedPrice = calculateDiscountedPrice(item);
+        return {
+          originalTotal: totals.originalTotal + (item.price * item.quantity),
+          discountedTotal: totals.discountedTotal + (discountedPrice * item.quantity)
+        };
+      },
+      { originalTotal: 0, discountedTotal: 0 }
     );
   };
 
@@ -67,7 +90,9 @@ export const CartProvider = ({ children }) => {
       removeFromCart, 
       clearCart,
       getCartTotal,
-      validateCart
+      getCartTotals, // Optional: if you need both totals
+      validateCart,
+      calculateDiscountedPrice // Expose if needed elsewhere
     }}>
       {children}
     </CartContext.Provider>
