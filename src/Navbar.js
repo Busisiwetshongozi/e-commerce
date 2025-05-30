@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from './CartContext';
-import { useAuth } from './auth/AuthContext';  // Import your AuthContext hook
+import { useAuth } from './auth/AuthContext';
 
 const Navbar = () => {
   const { cartItems } = useCart();
-  const { backendUser } = useAuth();  // Get backend user info including role
+  const { backendUser, isAuthenticated } = useAuth(); // Assuming your AuthContext provides isAuthenticated
   const location = useLocation();
 
   const getLinkClass = (path) =>
@@ -47,19 +47,42 @@ const Navbar = () => {
           )}
 
           {/* Everyone can place orders */}
-          <li className="nav-item">
-            <Link className={getLinkClass('/order')} to="/order">
-              Place Order
-            </Link>
-          </li>
+        
         </ul>
 
         <ul className="navbar-nav ms-auto">
+          {/* Show Sign In link when not authenticated */}
+          {!isAuthenticated && (
+            <li className="nav-item">
+              <Link className={getLinkClass('/login')} to="/login">
+                Login
+              </Link>
+            </li>
+          )}
+
+          {/* Show user profile when authenticated */}
+          {isAuthenticated && (
+            <li className="nav-item">
+              <Link className={getLinkClass('/profile')} to="/profile">
+                👤 Profile
+              </Link>
+            </li>
+          )}
+
           <li className="nav-item">
             <Link className={getLinkClass('/cart')} to="/cart">
               🛒 Cart ({cartItems.reduce((sum, item) => sum + item.quantity, 0)})
             </Link>
           </li>
+
+          {/* Show Sign Out when authenticated */}
+          {isAuthenticated && (
+            <li className="nav-item">
+              <Link className="nav-link" to="/signout">
+                Logout
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
     </nav>
