@@ -8,8 +8,7 @@ import SignUp from './Register';
 import Home from './Home';
 import GetOrder from './GetOrder';
 import ProductForm from './ProductForm';
-import Products from './Products';
-import PlaceOrder from './PlaceOrder';
+import Products from './Products';  
 import UserProfile from './UserProfile';
 import ReviewForm from './Review';
 import ProductReviews from './ProductReviews';
@@ -42,7 +41,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<SignUp />} />
           <Route path="/home" element={<Home />} />
-          <Route path="/order" element={<PlaceOrder />} />
+        
           <Route path="/profile" element={<UserProfile />} />
 
           <Route

@@ -5,38 +5,118 @@ const CartContext = createContext();
 export const useCart = () => useContext(CartContext);
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState(() => {
-    const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [cartItems, setCartItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  const userToken = localStorage.getItem('token'); // example token from storage
+
+  // Helper function for fetch with auth and JSON body
+  const fetchWithAuth = async (url, options = {}) => {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(userToken ? { Authorization: `Bearer ${userToken}` } : {})
+    };
+    const opts = { headers, ...options };
+    if (options.body && typeof options.body !== 'string') {
+      opts.body = JSON.stringify(options.body);
+    }
+    const response = await fetch(url, opts);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errText}`);
+    }
+    return response.json();
+  };
+
+  // Load cart on mount
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-  }, [cartItems]);
-
-  const addToCart = (product, quantity = 1) => {
-    setCartItems(prevItems => {
-      const existing = prevItems.find(item => item.id === product.id);
-      if (existing) {
-        return prevItems.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + quantity }
-            : item
-        );
+    const fetchCart = async () => {
+      if (!userToken) {
+        const saved = localStorage.getItem('cart');
+        setCartItems(saved ? JSON.parse(saved) : []);
+        setLoading(false);
+        return;
       }
-      return [...prevItems, { ...product, quantity }];
-    });
+      try {
+        const data = await fetchWithAuth('/api/cart');
+        setCartItems(data.items || []);
+      } catch (error) {
+        console.error('Failed to fetch cart from backend', error);
+        setCartItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCart();
+  }, [userToken]);
+
+  // Sync to localStorage for guests
+  useEffect(() => {
+    if (!userToken) {
+      localStorage.setItem('cart', JSON.stringify(cartItems));
+    }
+  }, [cartItems, userToken]);
+
+  // Add or update item
+  const addToCart = async (product, quantity = 1) => {
+    if (!userToken) {
+      setCartItems(prevItems => {
+        const existing = prevItems.find(item => item.id === product.id);
+        if (existing) {
+          return prevItems.map(item =>
+            item.id === product.id
+              ? { ...item, quantity: item.quantity + quantity }
+              : item
+          );
+        }
+        return [...prevItems, { ...product, quantity }];
+      });
+    } else {
+      try {
+        const data = await fetchWithAuth('/api/cart/item', {
+          method: 'POST',
+          body: { productId: product.id, quantity }
+        });
+        setCartItems(data.items);
+      } catch (error) {
+        console.error('Failed to add item to cart', error);
+      }
+    }
   };
 
-  const removeFromCart = (id) => {
-    setCartItems(prev => prev.filter(item => item.id !== id));
+  // Remove item
+  const removeFromCart = async (id) => {
+    if (!userToken) {
+      setCartItems(prev => prev.filter(item => item.id !== id));
+    } else {
+      try {
+        const data = await fetchWithAuth(`/api/cart/item/${id}`, {
+          method: 'DELETE'
+        });
+        setCartItems(data.items);
+      } catch (error) {
+        console.error('Failed to remove item', error);
+      }
+    }
   };
 
-  const clearCart = () => {
-    setCartItems([]);
+  // Clear cart
+  const clearCart = async () => {
+    if (!userToken) {
+      setCartItems([]);
+    } else {
+      try {
+        await fetchWithAuth('/api/cart/clear', {
+          method: 'DELETE'
+        });
+        setCartItems([]);
+      } catch (error) {
+        console.error('Failed to clear cart', error);
+      }
+    }
   };
 
-  // Calculate discounted price for an item
+  // Price calc helpers (same as before)
   const calculateDiscountedPrice = (item) => {
     if (item.discountPercentage > 0) {
       return item.price * (1 - item.discountPercentage / 100);
@@ -44,7 +124,6 @@ export const CartProvider = ({ children }) => {
     return item.price;
   };
 
-  // Calculate cart total using discounted prices
   const getCartTotal = () => {
     return cartItems.reduce(
       (total, item) => total + (calculateDiscountedPrice(item) * item.quantity),
@@ -52,7 +131,6 @@ export const CartProvider = ({ children }) => {
     );
   };
 
-  // Get both original and discounted totals if needed
   const getCartTotals = () => {
     return cartItems.reduce(
       (totals, item) => {
@@ -90,9 +168,10 @@ export const CartProvider = ({ children }) => {
       removeFromCart, 
       clearCart,
       getCartTotal,
-      getCartTotals, // Optional: if you need both totals
+      getCartTotals,
       validateCart,
-      calculateDiscountedPrice // Expose if needed elsewhere
+      calculateDiscountedPrice,
+      loading
     }}>
       {children}
     </CartContext.Provider>

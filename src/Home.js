@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react'; 
 import { useNavigate, Link } from 'react-router-dom';
-import { useCart } from './CartContext';
 import { useAuth } from './auth/AuthContext';
-import './Home.css';
+import './App.css';
 
 const MIN_CHARS_FOR_SUGGESTIONS = 2;
 
@@ -28,10 +27,8 @@ const RegularPriceDisplay = ({ price }) => {
 
 export default function Home() {
   const { currentUser, backendUser, logout } = useAuth();
-  const { addToCart } = useCart();
   const navigate = useNavigate();
 
-  // Product states
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -43,7 +40,6 @@ export default function Home() {
   const [error, setError] = useState(null);
   const searchRef = useRef(null);
 
-  // Close suggestions on click outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -54,7 +50,6 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -69,7 +64,6 @@ export default function Home() {
     fetchCategories();
   }, []);
 
-  // Fetch products on category change
   useEffect(() => {
     fetchProducts(selectedCategoryId);
   }, [selectedCategoryId]);
@@ -161,7 +155,6 @@ export default function Home() {
 
   return (
     <div className="home container my-5">
-      {/* Header with welcome and nav */}
       <header className="header d-flex justify-content-between align-items-center mb-4">
         <h1>
           {currentUser
@@ -180,7 +173,6 @@ export default function Home() {
         </nav>
       </header>
 
-      {/* Hero Section */}
       <section className="hero mb-4">
         <h2>{currentUser ? `Hello ${backendUser?.name || 'there'}! Ready to shop?` : 'Welcome to the Best E-commerce Store'}</h2>
         <p>Discover amazing products at unbeatable prices!</p>
@@ -192,7 +184,6 @@ export default function Home() {
         </button>
       </section>
 
-      {/* Search and category filters */}
       <div className="mb-4 position-relative" ref={searchRef}>
         <label htmlFor="searchInput" className="form-label">Search Products:</label>
         <div className="input-group">
@@ -240,7 +231,6 @@ export default function Home() {
         </select>
       </div>
 
-      {/* Product Grid */}
       <div className="row row-cols-1 row-cols-md-3 g-4">
         {error && <div className="alert alert-danger">Error loading products: {error}</div>}
         {!error && filteredProducts.length === 0 && (
@@ -281,27 +271,14 @@ export default function Home() {
                   )}
                 </div>
 
-                <p className="card-text text-truncate">{product.description}</p>
+               
               </div>
-              <div className="card-footer bg-transparent d-flex flex-column gap-2">
-                <button
-                  className="btn btn-success w-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    addToCart(product);
-                    alert(`${product.name} added to cart!`);
-                  }}
-                  disabled={product.stockQuantity === 0}
-                >
-                  Add to Cart
-                </button>
-              </div>
+              {/* Removed Add to Cart button */}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Footer */}
       <footer className="footer mt-5 text-center">
         <p>&copy; {new Date().getFullYear()} Shopify, All Rights Reserved</p>
         {currentUser && (

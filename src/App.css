@@ -1,38 +1,244 @@
-.App {
-  text-align: center;
+/* ===== GLOBAL VARIABLES ===== */
+:root {
+  /* Brand Colors */
+  --color-primary: #003049;       /* Dark blue (navbar, badges) */
+  --color-accent: #F77F00;        /* Warm orange (buttons, highlights) */
+  --color-white: #FFFFFF;         /* Cards, backgrounds */
+  
+  /* Text Colors */
+  --text-light: #FFFFFF;          /* White text for dark backgrounds */
+  --text-dark: #333333;           /* Default text */
+  
+  /* Status Colors */
+  --color-new: #F77F00;           /* New condition */
+  --color-used: #ffc107;          /* Used condition */
+  --color-damaged: #dc3545;       /* Damaged condition */
+  --color-muted: #6c757d;         /* Muted text */
+
+  /* Utility */
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --border-radius: 8px;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* ===== NAVBAR STYLES ===== */
+.navbar {
+  background-color: var(--color-primary) !important;
+  padding: 0.5rem 1rem;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.navbar-brand, .nav-link {
+  color: var(--text-light) !important;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+.nav-link:hover, .nav-link.active {
+  color: var(--color-accent) !important;
+}
+
+.navbar-toggler-icon {
+  filter: invert(1); /* White icon */
+}
+
+/* ===== HEADER ===== */
+.header {
+  padding: 1rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+/* ===== HOME CONTAINER ===== */
+.home {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* ===== BUTTON STYLES ===== */
+.btn-primary, 
+.btn-outline-primary {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.btn-primary {
+  background-color: var(--color-accent);
+  color: var(--color-white);
+}
+
+.btn-primary:hover,
+.btn-outline-primary:hover {
+  background-color: #e67300;
+  color: var(--color-white);
+  border-color: #e67300;
+}
+
+.btn-buy,
+.btn-success {
+  background-color: var(--color-accent) !important;
+  color: var(--text-light) !important;
+  border: none !important;
+}
+
+.btn-buy {
+  padding: 8px 16px;
+  border-radius: 4px;
+}
+
+.btn-success {
+  font-size: 0.8rem !important;
+  padding: 0.25rem 0.5rem !important;
+}
+
+.btn-buy:hover,
+.btn-success:hover {
+  background-color: #e67300 !important;
+}
+
+.btn-success:disabled {
+  background-color: #cccccc !important;
+}
+
+/* ===== CARD STYLES ===== */
+.card,
+.product-card {
+  background-color: var(--color-white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s;
+}
+
+.card:hover,
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.card-img-top {
+  height: 150px;
+  object-fit: cover;
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+.card-body {
+  padding: 0.5rem !important;
+}
+
+.card-footer {
+  background: transparent !important;
+  border-top: none !important;
+  padding: 0.5rem !important;
+}
+
+/* ===== BADGES ===== */
+.badge.bg-success {
+  background-color: var(--color-new) !important;
+}
+
+.badge.bg-warning {
+  background-color: var(--color-used) !important;
+}
+
+.badge.bg-danger {
+  background-color: var(--color-damaged) !important;
+}
+
+.discount-badge .badge,
+.badge.bg-danger.discount {
+  background-color: var(--color-primary) !important;
+  color: white !important;
+  font-size: 0.6rem !important;
+}
+
+/* ===== PRICE DISPLAY ===== */
+.price-display {
+  background-color: #f8f9fa;
+  padding: 0.75rem;
+  border-radius: var(--border-radius);
+}
+
+.original-price {
+  color: var(--color-muted);
+  text-decoration: line-through;
+}
+
+.discounted-price {
+  color: var(--color-new);
+  font-weight: bold;
+}
+
+.you-save {
+  color: var(--color-damaged);
+  font-size: 0.85rem;
+}
+
+/* ===== DISCOUNT CONTROLS ===== */
+.discount-controls .btn-outline-primary {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.discount-controls .btn-outline-primary:hover {
+  background-color: var(--color-accent);
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+.discount-controls .btn-outline-danger {
+  color: var(--color-damaged);
+  border-color: var(--color-damaged);
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+.discount-controls .btn-outline-danger:hover {
+  background-color: var(--color-damaged);
+  color: white;
+}
+
+/* ===== SEARCH COMPONENT ===== */
+.search-container {
+  position: relative;
+}
+
+.suggestions-dropdown {
+  background-color: var(--color-white);
+  border: 1px solid #ddd;
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+}
+
+.suggestion-item:hover {
+  background-color: #f8f9fa;
+}
+
+#searchButton {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: white;
+}
+
+#searchButton:hover {
+  background-color: #e67300;
+}
+
+/* ===== FOOTER ===== */
+.footer {
+  padding: 2rem 0;
+  border-top: 1px solid #eee;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    gap: 1rem;
   }
-  to {
-    transform: rotate(360deg);
+
+  .card {
+    margin-bottom: 1rem;
+  }
+
+  .product-card {
+    font-size: 0.8rem;
+  }
+
+  .card-img-top {
+    height: 120px;
   }
 }

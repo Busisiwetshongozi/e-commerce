@@ -3,7 +3,11 @@ import { useCart } from './CartContext';
 import { Link } from 'react-router-dom';
 
 const Cart = () => {
-  const { cartItems, removeFromCart, clearCart } = useCart();
+  const { cartItems, removeFromCart, clearCart, loading } = useCart();
+
+  if (loading) {
+    return <div className="container my-5 text-center">Loading cart...</div>;
+  }
 
   if (cartItems.length === 0) {
     return (

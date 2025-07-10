@@ -2,6 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from './CartContext';
 import { useAuth } from './auth/AuthContext';
+import './App.css'
 
 const Navbar = () => {
   const { cartItems } = useCart();
@@ -12,7 +13,7 @@ const Navbar = () => {
     `nav-link${location.pathname === path ? ' active' : ''}`;
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+    <nav className="navbar navbar-expand-lg navbar">
       <Link className="navbar-brand" to="/home">📱 MyStore</Link>
       <button
         className="navbar-toggler"

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from './Firebase';
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const ProductForm = () => {
   const [product, setProduct] = useState({
@@ -43,37 +45,67 @@ const ProductForm = () => {
     const { name, value } = e.target;
     setProduct(prev => ({
       ...prev,
-      [name]: name === 'price' || name === 'stockQuantity' || name === 'batteryHealth' 
-        ? Number(value) 
+      [name]: ['price', 'stockQuantity', 'batteryHealth'].includes(name)
+        ? Number(value)
         : value
     }));
   };
 
+  const showAlert = (message, type) => {
+    setAlert({ show: true, message, type });
+    setTimeout(() => setAlert({ ...alert, show: false }), 5000);
+  };
+
   const handleFileChange = (e) => {
-    setImageFiles(Array.from(e.target.files));
+    const files = Array.from(e.target.files);
+    const filteredFiles = files.filter(file => file.size <= MAX_FILE_SIZE);
+
+    if (filteredFiles.length < files.length) {
+      showAlert('Some files were too large and have been ignored (max 5MB).', 'warning');
+    }
+
+    setImageFiles(filteredFiles);
+    // Clear manual URLs to avoid duplication/conflict
+    setProduct(prev => ({ ...prev, imageUrls: [] }));
   };
 
   const uploadImages = async () => {
     setIsUploading(true);
     const uploadedUrls = [];
-    
+
     try {
-      for (const file of imageFiles) {
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
         const storageRef = ref(storage, `products/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(snapshot.ref);
-        uploadedUrls.push(url);
-        setUploadProgress(Math.round((uploadedUrls.length / imageFiles.length) * 100));
+        const uploadTask = uploadBytesResumable(storageRef, file);
+
+        await new Promise((resolve, reject) => {
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              // Calculate overall progress across all files
+              const totalProgress = Math.round(((i + progress / 100) / imageFiles.length) * 100);
+              setUploadProgress(totalProgress);
+            },
+            (error) => reject(error),
+            async () => {
+              const url = await getDownloadURL(uploadTask.snapshot.ref);
+              uploadedUrls.push(url);
+              resolve();
+            }
+          );
+        });
       }
       return uploadedUrls;
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       let imageUrls = [...product.imageUrls];
       if (imageFiles.length > 0) {
@@ -84,7 +116,7 @@ const ProductForm = () => {
       const response = await fetch('http://localhost:8080/api/products/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...product, imageUrls })
+        body: JSON.stringify({ ...product, imageUrls }),
       });
 
       if (response.ok) {
@@ -97,11 +129,6 @@ const ProductForm = () => {
     } catch (error) {
       showAlert(error.message || 'Failed to create product', 'danger');
     }
-  };
-
-  const showAlert = (message, type) => {
-    setAlert({ show: true, message, type });
-    setTimeout(() => setAlert({ ...alert, show: false }), 5000);
   };
 
   const resetForm = () => {
@@ -128,38 +155,46 @@ const ProductForm = () => {
       <h2 className="mb-4">Create Product</h2>
 
       {alert.show && (
-        <div className={`alert alert-${alert.type} alert-dismissible fade show`} role="alert">
+        <div 
+          className={`alert alert-${alert.type} alert-dismissible fade show`} 
+          role="alert" 
+          aria-live="polite"
+        >
           {alert.message}
           <button 
             type="button" 
             className="btn-close" 
+            aria-label="Close alert"
             onClick={() => setAlert({ ...alert, show: false })}
           ></button>
         </div>
       )}
 
       <form onSubmit={handleSubmit}>
+
+        {/* Name */}
         <div className="mb-3">
           <label htmlFor="name" className="form-label">Name</label>
           <input
             type="text"
-            className="form-control"
             id="name"
             name="name"
+            className="form-control"
             value={product.name}
             onChange={handleChange}
             required
           />
         </div>
 
+        {/* Brand & Model */}
         <div className="row mb-3">
           <div className="col-md-6">
             <label htmlFor="brand" className="form-label">Brand</label>
             <input
               type="text"
-              className="form-control"
               id="brand"
               name="brand"
+              className="form-control"
               value={product.brand}
               onChange={handleChange}
               required
@@ -169,9 +204,9 @@ const ProductForm = () => {
             <label htmlFor="model" className="form-label">Model</label>
             <input
               type="text"
-              className="form-control"
               id="model"
               name="model"
+              className="form-control"
               value={product.model}
               onChange={handleChange}
               required
@@ -179,12 +214,13 @@ const ProductForm = () => {
           </div>
         </div>
 
+        {/* Category */}
         <div className="mb-3">
           <label htmlFor="categoryId" className="form-label">Category</label>
           <select
-            className="form-select"
             id="categoryId"
             name="categoryId"
+            className="form-select"
             value={product.categoryId}
             onChange={handleChange}
             required
@@ -196,26 +232,28 @@ const ProductForm = () => {
           </select>
         </div>
 
+        {/* Description */}
         <div className="mb-3">
           <label htmlFor="description" className="form-label">Description</label>
           <textarea
-            className="form-control"
             id="description"
             name="description"
+            className="form-control"
             rows="3"
             value={product.description}
             onChange={handleChange}
-          ></textarea>
+          />
         </div>
 
+        {/* Price, Stock, Condition */}
         <div className="row mb-3">
           <div className="col-md-4">
             <label htmlFor="price" className="form-label">Price ($)</label>
             <input
               type="number"
-              className="form-control"
               id="price"
               name="price"
+              className="form-control"
               step="0.01"
               min="0"
               value={product.price}
@@ -227,9 +265,9 @@ const ProductForm = () => {
             <label htmlFor="stockQuantity" className="form-label">Stock Quantity</label>
             <input
               type="number"
-              className="form-control"
               id="stockQuantity"
               name="stockQuantity"
+              className="form-control"
               min="0"
               value={product.stockQuantity}
               onChange={handleChange}
@@ -239,9 +277,9 @@ const ProductForm = () => {
           <div className="col-md-4">
             <label htmlFor="condition" className="form-label">Condition</label>
             <select
-              className="form-select"
               id="condition"
               name="condition"
+              className="form-select"
               value={product.condition}
               onChange={handleChange}
             >
@@ -252,14 +290,15 @@ const ProductForm = () => {
           </div>
         </div>
 
+        {/* Battery, Storage, Color */}
         <div className="row mb-3">
           <div className="col-md-4">
             <label htmlFor="batteryHealth" className="form-label">Battery Health (%)</label>
             <input
               type="number"
-              className="form-control"
               id="batteryHealth"
               name="batteryHealth"
+              className="form-control"
               min="0"
               max="100"
               value={product.batteryHealth}
@@ -270,9 +309,9 @@ const ProductForm = () => {
             <label htmlFor="storage" className="form-label">Storage</label>
             <input
               type="text"
-              className="form-control"
               id="storage"
               name="storage"
+              className="form-control"
               value={product.storage}
               onChange={handleChange}
               placeholder="e.g., 128GB"
@@ -282,24 +321,26 @@ const ProductForm = () => {
             <label htmlFor="color" className="form-label">Color</label>
             <input
               type="text"
-              className="form-control"
               id="color"
               name="color"
+              className="form-control"
               value={product.color}
               onChange={handleChange}
             />
           </div>
         </div>
 
+        {/* Images Upload */}
         <div className="mb-3">
           <label htmlFor="images" className="form-label">Product Images</label>
           <input
             type="file"
-            className="form-control"
             id="images"
+            className="form-control"
             multiple
             onChange={handleFileChange}
             accept="image/*"
+            disabled={isUploading}
           />
           <div className="form-text">Upload multiple images (max 5MB each)</div>
 
@@ -308,7 +349,9 @@ const ProductForm = () => {
               <strong>Selected files:</strong>
               <ul className="list-unstyled">
                 {imageFiles.map((file, index) => (
-                  <li key={index}>{file.name} ({Math.round(file.size / 1024)}KB)</li>
+                  <li key={index}>
+                    {file.name} ({Math.round(file.size / 1024)}KB)
+                  </li>
                 ))}
               </ul>
             </div>
@@ -321,6 +364,9 @@ const ProductForm = () => {
                   className="progress-bar progress-bar-striped" 
                   role="progressbar" 
                   style={{ width: `${uploadProgress}%` }}
+                  aria-valuenow={uploadProgress}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
                 >
                   {uploadProgress}%
                 </div>
@@ -330,21 +376,24 @@ const ProductForm = () => {
           )}
         </div>
 
+        {/* Manual Image URLs */}
         <div className="mb-3">
           <label htmlFor="imageUrls" className="form-label">OR Enter Image URLs (comma separated)</label>
           <input
             type="text"
-            className="form-control"
             id="imageUrls"
+            className="form-control"
             value={product.imageUrls.join(', ')}
             onChange={(e) => setProduct({
               ...product,
               imageUrls: e.target.value.split(',').map(url => url.trim())
             })}
             placeholder="https://example.com/image1.jpg, https://example.com/image2.jpg"
+            disabled={isUploading}
           />
         </div>
 
+        {/* Submit Button */}
         <div className="d-grid">
           <button 
             type="submit" 

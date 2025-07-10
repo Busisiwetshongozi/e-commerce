@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useCart } from './CartContext';
 
 const ProductDetails = () => {
-  const { id } = useParams(); // Extract product ID from the URL
-  const navigate = useNavigate(); // Use navigate for programmatic routing
-  const [product, setProduct] = useState(null); // Store the product data
-  const [reviews, setReviews] = useState([]); // Store the product reviews
-  const [isLoading, setIsLoading] = useState(true); // Loading state
-  const [error, setError] = useState(null); // Error state
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const [product, setProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch product data when component mounts or product ID changes
     const fetchProduct = async () => {
       setIsLoading(true);
       setError(null);
@@ -19,16 +20,42 @@ const ProductDetails = () => {
         if (!res.ok) throw new Error('Failed to fetch product');
         const data = await res.json();
         setProduct(data);
-        setReviews(data.reviews || []); // Set reviews from product data
+        setReviews(data.reviews || []);
       } catch (err) {
-        setError(err.message); // Set error if fetch fails
+        setError(err.message);
       } finally {
-        setIsLoading(false); // End loading
+        setIsLoading(false);
       }
     };
 
     if (id) fetchProduct();
   }, [id]);
+
+  const handleAddToCart = (e) => {
+    e.stopPropagation();
+    addToCart(product);
+    alert(`${product.name} added to cart!`);
+  };
+
+  // ⭐ Render star rating (up to 5 stars)
+  const renderStars = (rating = 0) => {
+    const fullStars = Math.round(rating);
+    return (
+      <div
+        className="text-warning mb-2"
+        style={{ cursor: 'pointer', fontSize: '1.25rem' }}
+        onClick={() => navigate(`/reviews/${product.id}`)}
+        title="Click to see reviews"
+      >
+        {Array.from({ length: 5 }, (_, i) => (
+          <span key={i}>{i < fullStars ? '★' : '☆'}</span>
+        ))}
+        <span className="ms-2 text-dark small">
+          ({reviews.length} review{reviews.length !== 1 ? 's' : ''})
+        </span>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -48,36 +75,33 @@ const ProductDetails = () => {
     return <div className="alert alert-warning">Product not found.</div>;
   }
 
+  // Optional: Calculate average rating from reviews
+  const averageRating = reviews.length
+    ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
+    : 0;
+
   return (
     <div className="container my-5">
       <h2>{product.name}</h2>
 
-      {/* Display product image */}
       <img
-        src={product.imageUrls?.[0]} 
+        src={product.imageUrls?.[0]}
         alt={product.name}
         className="img-fluid"
         style={{ height: '400px', objectFit: 'cover' }}
       />
 
-      {/* Product Description */}
+      {renderStars(averageRating)}
+
       <p>{product.description}</p>
 
-      {/* Price and other info */}
-      <p><strong>Price: </strong>${product.price.toFixed(2)}</p>
+      <p><strong>Price: </strong>R{product.price.toFixed(2)}</p>
       <p><strong>Brand: </strong>{product.brand}</p>
       <p><strong>Model: </strong>{product.model}</p>
       <p><strong>Condition: </strong>{product.condition.replace('_', ' ')}</p>
       <p><strong>Stock Quantity: </strong>{product.stockQuantity}</p>
 
-      {/* Additional details */}
       <div className="d-flex flex-column gap-2 mt-4">
-        <button
-          className="btn btn-outline-primary"
-          onClick={() => navigate(`/reviews/${product.id}`)}
-        >
-          See Reviews
-        </button>
         <button
           className="btn btn-outline-secondary"
           onClick={() => navigate(`/review/${product.id}`)}
@@ -86,13 +110,10 @@ const ProductDetails = () => {
         </button>
       </div>
 
-
-
-      {/* Add to Cart Button */}
       <div className="mt-4">
         <button
           className="btn btn-success w-100"
-          onClick={() => alert(`${product.name} added to cart!`)} // You can replace this with actual cart logic
+          onClick={handleAddToCart}
           disabled={product.stockQuantity === 0}
         >
           {product.stockQuantity > 0 ? 'Add to Cart' : 'Out of Stock'}
